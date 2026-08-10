@@ -53,9 +53,13 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
         scale: 2,
         backgroundColor: '#0A0D12',
         logging: false,
+        width: 1400,
+        windowWidth: 1400,
         onclone: (clonedDoc) => {
           const clonedReport = clonedDoc.querySelector('[data-report-content]')
           if (clonedReport) {
+            clonedReport.style.width = '1400px'
+            clonedReport.style.minWidth = '1400px'
             // Replace CSS variables with actual hex colors
             clonedReport.style.setProperty('--bg-1', '#05070C')
             clonedReport.style.setProperty('--bg-2', '#0A0D12')
