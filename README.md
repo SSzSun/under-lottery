@@ -27,7 +27,7 @@
 
 ```bash
 git clone <repository-url>
-cd under-lottory
+cd under-lottery
 ```
 
 ### 2. ติดตั้ง Dependencies
@@ -76,7 +76,7 @@ npm run dev
 ## โครงสร้างโปรเจกต์
 
 ```
-under-lottory/
+under-lottery/
 ├── src/
 │   ├── components/          # React Components
 │   │   ├── AddEntryModal.jsx
