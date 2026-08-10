@@ -74,10 +74,22 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
         }
       })
 
-      const link = document.createElement('a')
-      link.download = `รายงานหวย-${drawDate}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
+      const blob = await (await fetch(canvas.toDataURL('image/png'))).blob()
+      const file = new File([blob], `รายงานหวย-${drawDate}.png`, { type: 'image/png' })
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'รายงานหวย',
+          text: `รายงานหวย งวดวันที่ ${drawDate}`
+        })
+      } else {
+        // Fallback to download link
+        const link = document.createElement('a')
+        link.download = `รายงานหวย-${drawDate}.png`
+        link.href = canvas.toDataURL('image/png')
+        link.click()
+      }
     } catch (error) {
       console.error('Error generating image:', error)
     }
