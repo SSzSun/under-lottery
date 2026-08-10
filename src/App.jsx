@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Ban, TrendingUp, Users, Hash, Calendar } from 'lucide-react'
+import { Plus, Search, Ban, TrendingUp, Users, Hash, Calendar, FileText } from 'lucide-react'
 import { supabase } from './lib/supabase'
 import { calculateDrawDate } from './lib/utils'
 import BuyerCard from './components/BuyerCard'
 import EntryModal from './components/EntryModal'
 import AddEntryModal from './components/AddEntryModal'
+import ReportModal from './components/ReportModal'
 import Toast from './components/Toast'
 import ConfirmModal from './components/ConfirmModal'
 
@@ -20,6 +21,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [showForbidden, setShowForbidden] = useState(false)
   const [showAddEntry, setShowAddEntry] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const [newForbidden, setNewForbidden] = useState('')
   const [toast, setToast] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null)
@@ -241,6 +243,13 @@ export default function App() {
 
   const handleUpdateEntry = async (entryId, newNumber, newBetType, newAmount, newReverseMode = null) => {
     try {
+      // Check if the new number is forbidden (closed)
+      const isForbidden = forbiddenNumbers.some(fn => fn.number === newNumber && fn.is_open === false)
+      if (isForbidden) {
+        setToast({ type: 'error', message: `เลข ${newNumber} เป็นเลขอั้น (ปิดขาย)` })
+        return
+      }
+
       const { error } = await supabase
         .from('entries')
         .update({
@@ -283,7 +292,7 @@ export default function App() {
     try {
       const { error } = await supabase
         .from('forbidden_numbers')
-        .insert([{ number: trimmed, draw_id: currentDraw.id }])
+        .insert([{ number: trimmed, draw_id: currentDraw.id, is_open: true }])
 
       if (error) {
         if (error.code === '23505') {
@@ -335,14 +344,40 @@ export default function App() {
     })
   }
 
+  const handleToggleForbiddenStatus = async (id, currentStatus) => {
+    try {
+      const forbiddenNumber = forbiddenNumbers.find(f => f.id === id)
+      if (forbiddenNumber && forbiddenNumber.draw_id !== currentDraw.id) {
+        setToast({ type: 'warning', message: 'แก้ไขได้เฉพาะเลขอั้นในงวดปัจจุบันเท่านั้น' })
+        return
+      }
+
+      const { error } = await supabase
+        .from('forbidden_numbers')
+        .update({ is_open: !currentStatus })
+        .eq('id', id)
+
+      if (error) throw error
+
+      setForbiddenNumbers(prev => prev.map(f =>
+        f.id === id ? { ...f, is_open: !currentStatus } : f
+      ))
+      setToast({ type: 'success', message: !currentStatus ? 'เปิดขายแล้ว' : 'ปิดขายแล้ว' })
+    } catch (error) {
+      console.error('Error toggling forbidden status:', error)
+      setToast({ type: 'error', message: 'เกิดข้อผิดพลาด: ' + error.message })
+    }
+  }
+
   // Filter buyers by search term
   const filteredBuyers = buyers.filter(buyer => {
     const buyerEntries = entries.filter(e => e.buyer_id === buyer.id)
     if (buyerEntries.length === 0) return false
 
     const matchName = buyer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const isNumericSearch = /^\d+$/.test(searchTerm)
     const matchNumber = buyerEntries.some(e =>
-      e.number.includes(searchTerm)
+      isNumericSearch ? e.number === searchTerm : e.number.includes(searchTerm)
     )
 
     return matchName || matchNumber
@@ -369,10 +404,39 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-1)]">
-        <div className="text-center space-y-4">
-          <div className="text-5xl animate-pulse">⏳</div>
-          <div className="text-xl text-[var(--text-secondary)]">กำลังโหลดข้อมูล...</div>
+      <div className="min-h-screen bg-[var(--bg-1)] p-4">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="bg-[var(--bg-2)] rounded-2xl p-6 animate-pulse">
+            <div className="h-8 bg-[var(--bg-3)] rounded-lg w-48 mb-4"></div>
+            <div className="flex gap-4">
+              <div className="h-10 bg-[var(--bg-3)] rounded-lg w-32"></div>
+              <div className="h-10 bg-[var(--bg-3)] rounded-lg w-32"></div>
+            </div>
+          </div>
+
+          {/* Stats Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-[var(--bg-2)] rounded-2xl p-6 animate-pulse">
+                <div className="h-4 bg-[var(--bg-3)] rounded w-24 mb-3"></div>
+                <div className="h-8 bg-[var(--bg-3)] rounded w-32"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="bg-[var(--bg-2)] rounded-2xl p-6 animate-pulse">
+                <div className="h-6 bg-[var(--bg-3)] rounded w-32 mb-4"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-[var(--bg-3)] rounded w-full"></div>
+                  <div className="h-4 bg-[var(--bg-3)] rounded w-3/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -432,15 +496,24 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <button
-              onClick={() => setShowAddEntry(true)}
-              disabled={selectedDrawId !== currentDraw.id}
-              className="w-full sm:w-auto bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-              title={selectedDrawId !== currentDraw.id ? 'สามารถบันทึกได้เฉพาะงวดปัจจุบัน' : ''}
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              บันทึกหวย
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowReport(true)}
+                className="bg-[var(--bg-card)] hover:bg-[var(--bg-3)] text-[var(--text-primary)] font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-all border border-[var(--border)] hover:border-[var(--primary)] flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                รายงาน
+              </button>
+              <button
+                onClick={() => setShowAddEntry(true)}
+                disabled={selectedDrawId !== currentDraw.id}
+                className="w-full sm:w-auto bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                title={selectedDrawId !== currentDraw.id ? 'สามารถบันทึกได้เฉพาะงวดปัจจุบัน' : ''}
+              >
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                บันทึกหวย
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -502,11 +575,21 @@ export default function App() {
                   <div className="text-sm text-[var(--text-secondary)] mb-1">เลขอั้น</div>
                   <div className="flex gap-2 flex-wrap">
                     {forbiddenNumbers.length > 0 ? (
-                      forbiddenNumbers.slice(0, 5).map(fn => (
-                        <span key={fn.id} className="px-2.5 py-1 bg-red-50 text-[var(--danger)] text-sm font-bold rounded-md border border-red-200">
-                          {fn.number}
-                        </span>
-                      ))
+                      forbiddenNumbers.slice(0, 5).map(fn => {
+                        const isOpen = fn.is_open === true
+                        return (
+                          <span
+                            key={fn.id}
+                            className={`px-2.5 py-1 text-sm font-bold rounded-md border ${
+                              isOpen
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : 'bg-red-50 text-[var(--danger)] border-red-200'
+                            }`}
+                          >
+                            {fn.number}
+                          </span>
+                        )
+                      })
                     ) : (
                       <span className="text-sm text-[var(--text-muted)]">-</span>
                     )}
@@ -562,21 +645,42 @@ export default function App() {
             <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
               {forbiddenNumbers.map(fn => {
                 const isCurrentDraw = fn.draw_id === currentDraw.id
+                const isOpen = fn.is_open === true
                 return (
                   <div
                     key={fn.id}
-                    className="bg-[var(--bg-3)] border border-[var(--border-light)] rounded-lg px-3 py-2 flex justify-between items-center hover:border-[var(--danger)] transition-all"
+                    className={`border rounded-lg px-3 py-2 flex flex-col gap-1 transition-all ${
+                      isOpen
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                    }`}
                   >
-                    <span className="text-[var(--text-primary)] font-semibold text-sm">{fn.number}</span>
-                    {isCurrentDraw ? (
+                    <div className="flex justify-between items-center">
+                      <span className={`font-semibold text-sm ${isOpen ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                        {fn.number}
+                      </span>
+                      {isCurrentDraw ? (
+                        <button
+                          onClick={() => handleDeleteForbidden(fn.id)}
+                          className="text-[var(--text-muted)] hover:text-[var(--danger)] text-lg font-medium transition-all"
+                        >
+                          ×
+                        </button>
+                      ) : (
+                        <span className="text-[var(--text-muted)] text-xs">🔒</span>
+                      )}
+                    </div>
+                    {isCurrentDraw && (
                       <button
-                        onClick={() => handleDeleteForbidden(fn.id)}
-                        className="text-[var(--text-muted)] hover:text-[var(--danger)] text-lg font-medium transition-all ml-2"
+                        onClick={() => handleToggleForbiddenStatus(fn.id, isOpen)}
+                        className={`text-xs font-medium py-0.5 px-2 rounded transition-all ${
+                          isOpen
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        }`}
                       >
-                        ×
+                        {isOpen ? 'ปิดขาย' : 'เปิดขาย'}
                       </button>
-                    ) : (
-                      <span className="text-[var(--text-muted)] text-xs ml-2">🔒</span>
                     )}
                   </div>
                 )
@@ -663,6 +767,18 @@ export default function App() {
         initialBuyerName={typeof showAddEntry === 'string' ? showAddEntry : ''}
       />
 
+      {showReport && (
+        <ReportModal
+          buyers={buyers}
+          entries={entries.filter(e => {
+            const draw = availableDraws.find(d => d.id === selectedDrawId)
+            return draw && e.draw_id === draw.id
+          })}
+          drawDate={availableDraws.find(d => d.id === selectedDrawId)?.draw_date || ''}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+
       {selectedBuyer && (
         <EntryModal
           buyer={selectedBuyer}
@@ -673,6 +789,7 @@ export default function App() {
           onUpdate={handleUpdateEntry}
           onAddEntries={handleAddEntriesToBuyer}
           isCurrentDraw={selectedDrawId === currentDraw.id}
+          setToast={setToast}
         />
       )}
     </div>

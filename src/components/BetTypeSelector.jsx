@@ -1,5 +1,8 @@
 export default function BetTypeSelector({ entry, onBetTypeChange, disabled = false }) {
-  const getBetTypeOptions = (number) => ['บน', 'ล่าง']
+  const getBetTypeOptions = (number) => {
+    if (number.length === 5) return ['กลุ่ม']
+    return ['บน', 'ล่าง']
+  }
 
   return entry.number ? (
     <div className="flex gap-1.5 flex-1">

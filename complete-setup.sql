@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS forbidden_numbers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   number TEXT NOT NULL,
   draw_id UUID NOT NULL REFERENCES draws(id) ON DELETE CASCADE,
+  is_open BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(number, draw_id)
 );
@@ -60,6 +61,17 @@ BEGIN
     WHERE table_name = 'forbidden_numbers' AND column_name = 'draw_id'
   ) THEN
     ALTER TABLE forbidden_numbers ADD COLUMN draw_id UUID REFERENCES draws(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Add is_open to forbidden_numbers if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'forbidden_numbers' AND column_name = 'is_open'
+  ) THEN
+    ALTER TABLE forbidden_numbers ADD COLUMN is_open BOOLEAN DEFAULT true;
   END IF;
 END $$;
 

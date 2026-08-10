@@ -13,7 +13,7 @@ export default function EntryCard({ entry, onNumberChange, onBetTypeChange, onRe
           onChange={(e) => onNumberChange(entry.id, e.target.value)}
           className="w-24 bg-[var(--bg-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] text-lg font-bold text-center placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all tracking-wider"
           placeholder="เลข"
-          maxLength={3}
+          maxLength={5}
           inputMode="numeric"
         />
 

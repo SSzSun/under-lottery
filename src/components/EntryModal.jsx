@@ -6,7 +6,7 @@ import BetTypeSelector from './BetTypeSelector'
 import ReverseModeSelector from './ReverseModeSelector'
 import AmountInputs from './AmountInputs'
 
-export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate, onAddEntries, onDeleteSingleEntry, isCurrentDraw = true }) {
+export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate, onAddEntries, onDeleteSingleEntry, isCurrentDraw = true, setToast }) {
   const [filter, setFilter] = useState('all')
   const [isEditing, setIsEditing] = useState(false)
   const [editedEntries, setEditedEntries] = useState({})
@@ -15,13 +15,15 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
   const filteredEntries = entries.filter(entry => {
     if (filter === '2digit') return entry.number.length === 2
     if (filter === '3digit') return entry.number.length === 3
-    if (filter === 'บน') return entry.bet_type === 'บน' || entry.bet_type === 'ลอยบน'
+    if (filter === 'group') return entry.number.length === 5
+    if (filter === 'บน') return entry.bet_type === 'บน' || entry.bet_type === 'ลอยบน' || entry.bet_type === 'กลุ่ม'
     if (filter === 'ล่าง') return entry.bet_type === 'ล่าง' || entry.bet_type === 'ลอยล่าง'
     return true
   })
 
   const groupedByType = filteredEntries.reduce((acc, entry) => {
-    const type = entry.bet_type.replace('ลอย', '')
+    let type = entry.bet_type.replace('ลอย', '')
+    if (entry.bet_type === 'กลุ่ม') type = 'บน'
     if (!acc[type]) acc[type] = []
     acc[type].push(entry)
     return acc
@@ -38,11 +40,12 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
     { key: 'all', label: 'ทั้งหมด', count: entries.length },
     { key: '2digit', label: '2 หลัก', count: entries.filter(e => e.number.length === 2).length },
     { key: '3digit', label: '3 หลัก', count: entries.filter(e => e.number.length === 3).length },
-    { key: 'บน', label: 'บน', count: entries.filter(e => e.bet_type === 'บน' || e.bet_type === 'ลอยบน').length },
+    { key: 'group', label: 'กลุ่ม', count: entries.filter(e => e.number.length === 5).length },
+    { key: 'บน', label: 'บน', count: entries.filter(e => e.bet_type === 'บน' || e.bet_type === 'ลอยบน' || e.bet_type === 'กลุ่ม').length },
     { key: 'ล่าง', label: 'ล่าง', count: entries.filter(e => e.bet_type === 'ล่าง' || e.bet_type === 'ลอยล่าง').length }
   ]
 
-  const shouldLimitToOneAmount = (num, reverseMode) => isFloatingNumber(num) || isPairNumber(num) || isTripleNumber(num) || reverseMode
+  const shouldLimitToOneAmount = (num, reverseMode) => isFloatingNumber(num) || isPairNumber(num) || isTripleNumber(num) || num.length === 5 || reverseMode
 
   const handleStartEdit = () => {
     const initial = {}
@@ -67,7 +70,7 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
   }
 
   const handleNumberChange = (entryId, value) => {
-    if (!/^\d{0,3}$/.test(value)) return
+    if (!/^\d{0,5}$/.test(value)) return
 
     setEditedEntries(prev => {
       const entry = prev[entryId]
@@ -75,9 +78,13 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
 
       if (value.length === 1) {
         newBetType = entry.betType === 'ล่าง' || entry.betType === 'ลอยล่าง' ? 'ลอยล่าง' : 'ลอยบน'
+      } else if (value.length === 5) {
+        newBetType = 'กลุ่ม'
       } else {
         if (entry.betType.includes('ลอย')) {
           newBetType = entry.betType === 'ลอยล่าง' ? 'ล่าง' : 'บน'
+        } else if (entry.betType === 'กลุ่ม') {
+          newBetType = 'บน'
         }
       }
 
@@ -99,6 +106,13 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
         return {
           ...prev,
           [entryId]: { ...entry, betType: type === 'ล่าง' ? 'ลอยล่าง' : 'ลอยบน' }
+        }
+      }
+
+      if (entry.number.length === 5) {
+        return {
+          ...prev,
+          [entryId]: { ...entry, betType: 'กลุ่ม' }
         }
       }
 
@@ -144,6 +158,24 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
   }
 
   const handleSaveAll = async () => {
+    // Validate all edited entries first
+    for (const [entryId, entry] of Object.entries(editedEntries)) {
+      if (entriesToDelete.has(entryId)) continue
+
+      if (entry.number.length === 4) {
+        setToast({ type: 'error', message: 'ไม่รองรับเลข 4 หลัก' })
+        return
+      }
+
+      if (entry.number.length === 5) {
+        const digits = new Set(entry.number)
+        if (digits.size !== 5) {
+          setToast({ type: 'error', message: 'หวยกลุ่มต้องเป็นเลข 5 หลักที่ไม่ซ้ำกัน' })
+          return
+        }
+      }
+    }
+
     // First, handle updates
     const updates = Object.entries(editedEntries).map(([entryId, entry]) => {
       if (entriesToDelete.has(entryId)) return Promise.resolve()
@@ -288,7 +320,9 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
           {sortedTypes.map(type => (
             <div key={type}>
               <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2 sm:mb-3 flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${type === 'บน' ? 'bg-blue-500' : 'bg-orange-500'}`}></span>
+                <span className={`w-2 h-2 rounded-full ${
+                  type === 'บน' ? 'bg-blue-500' : type === 'ล่าง' ? 'bg-orange-500' : 'bg-purple-500'
+                }`}></span>
                 {type}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
@@ -307,7 +341,7 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
                               onChange={(e) => handleNumberChange(entry.id, e.target.value)}
                               disabled={entriesToDelete.has(entry.id)}
                               className="w-16 sm:w-20 bg-[var(--bg-2)] border border-[var(--border)] rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-[var(--text-primary)] text-base sm:text-lg font-bold text-center focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all tracking-wider disabled:opacity-50"
-                              maxLength={3}
+                              maxLength={5}
                               inputMode="numeric"
                             />
                             <BetTypeSelector
@@ -349,12 +383,17 @@ export default function EntryModal({ buyer, entries, onClose, onDelete, onUpdate
                           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             <span className="text-xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-wider">{entry.number}</span>
                             <span className={`text-xs sm:text-sm px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium ${
-                              entry.bet_type.includes('บน')
+                              entry.bet_type.includes('บน') || entry.bet_type === 'กลุ่ม'
                                 ? 'bg-blue-100 text-blue-700'
                                 : 'bg-orange-100 text-orange-700'
                             }`}>
-                              {entry.bet_type}
+                              {entry.bet_type === 'กลุ่ม' ? 'บน' : entry.bet_type}
                             </span>
+                            {entry.bet_type === 'กลุ่ม' && (
+                              <span className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-medium bg-purple-100 text-purple-700">
+                                กลุ่ม
+                              </span>
+                            )}
                             {entry.reverse_mode && (
                               <span className="text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-medium bg-purple-100 text-purple-700">
                                 {entry.reverse_mode}

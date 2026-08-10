@@ -3,13 +3,14 @@ import { useState } from 'react'
 const isFloatingNumber = (num) => num.length === 1
 const isPairNumber = (num) => num.length === 2 && num[0] === num[1]
 const isTripleNumber = (num) => num.length === 3 && num[0] === num[1] && num[1] === num[2]
-const shouldLimitToOneAmount = (num, reverseMode) => isFloatingNumber(num) || isPairNumber(num) || isTripleNumber(num) || reverseMode
+const isGroupNumber = (num) => num.length === 5
+const shouldLimitToOneAmount = (num, reverseMode) => isFloatingNumber(num) || isPairNumber(num) || isTripleNumber(num) || isGroupNumber(num) || reverseMode
 
 export function useEntryEditor(initialEntries = []) {
   const [entries, setEntries] = useState(initialEntries)
 
   const handleNumberChange = (id, value) => {
-    if (!/^\d{0,3}$/.test(value)) return
+    if (!/^\d{0,5}$/.test(value)) return
 
     setEntries(prev => prev.map(entry => {
       if (entry.id !== id) return entry
@@ -17,9 +18,13 @@ export function useEntryEditor(initialEntries = []) {
       let newBetType = entry.betType
       if (value.length === 1) {
         newBetType = entry.betType === 'ล่าง' ? 'ลอยล่าง' : 'ลอยบน'
+      } else if (value.length === 5) {
+        newBetType = 'กลุ่ม'
       } else {
         if (entry.betType.includes('ลอย')) {
           newBetType = entry.betType === 'ลอยล่าง' ? 'ล่าง' : 'บน'
+        } else if (entry.betType === 'กลุ่ม') {
+          newBetType = 'บน'
         }
       }
 
@@ -36,6 +41,10 @@ export function useEntryEditor(initialEntries = []) {
 
       if (entry.number.length === 1) {
         return { ...entry, betType: type === 'ล่าง' ? 'ลอยล่าง' : 'ลอยบน' }
+      }
+
+      if (entry.number.length === 5) {
+        return { ...entry, betType: 'กลุ่ม' }
       }
 
       const newReverseMode = (type === 'ล่าง' && entry.number.length === 3) ? entry.reverseMode : null

@@ -30,7 +30,7 @@ export const createEntries = (data) => {
 
 // ตรวจสอบเลขอั้น
 export const isForbiddenNumber = (number, forbiddenList) => {
-  return forbiddenList.some(fn => fn.number === number)
+  return forbiddenList.some(fn => fn.number === number && fn.is_open === false)
 }
 
 // คำนวณยอดรวมของ buyer
