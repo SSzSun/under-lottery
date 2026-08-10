@@ -60,6 +60,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
           if (clonedReport) {
             clonedReport.style.width = '1400px'
             clonedReport.style.minWidth = '1400px'
+            clonedReport.style.padding = '32px'
             // Replace CSS variables with actual hex colors
             clonedReport.style.setProperty('--bg-1', '#05070C')
             clonedReport.style.setProperty('--bg-2', '#0A0D12')
@@ -70,6 +71,12 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
             clonedReport.style.setProperty('--accent', '#38BDF8')
             clonedReport.style.setProperty('--border', '#1E293B')
             clonedReport.style.setProperty('--border-light', '#334155')
+
+            // Fix Thai font baseline alignment for flex items
+            const flexHeaders = clonedReport.querySelectorAll('.flex.items-center')
+            flexHeaders.forEach(el => {
+              el.style.alignItems = 'baseline'
+            })
           }
         }
       })
