@@ -1,5 +1,5 @@
 import { X, Download } from 'lucide-react'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import { useRef } from 'react'
 
 export default function ReportModal({ buyers, entries, drawDate, onClose }) {
@@ -49,39 +49,13 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
     if (!reportRef.current) return
 
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        backgroundColor: '#0A0D12',
-        logging: false,
-        width: 1400,
-        windowWidth: 1400,
-        onclone: (clonedDoc) => {
-          const clonedReport = clonedDoc.querySelector('[data-report-content]')
-          if (clonedReport) {
-            clonedReport.style.width = '1400px'
-            clonedReport.style.minWidth = '1400px'
-            clonedReport.style.padding = '32px'
-            // Replace CSS variables with actual hex colors
-            clonedReport.style.setProperty('--bg-1', '#05070C')
-            clonedReport.style.setProperty('--bg-2', '#0A0D12')
-            clonedReport.style.setProperty('--bg-3', '#0F131C')
-            clonedReport.style.setProperty('--bg-card', '#0A0D12')
-            clonedReport.style.setProperty('--text-primary', '#F8FAFC')
-            clonedReport.style.setProperty('--text-secondary', '#94A3B8')
-            clonedReport.style.setProperty('--accent', '#38BDF8')
-            clonedReport.style.setProperty('--border', '#1E293B')
-            clonedReport.style.setProperty('--border-light', '#334155')
-
-            // Fix Thai font baseline alignment for flex items
-            const flexHeaders = clonedReport.querySelectorAll('.flex.items-center')
-            flexHeaders.forEach(el => {
-              el.style.alignItems = 'baseline'
-            })
-          }
-        }
+      const dataUrl = await toPng(reportRef.current, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#0A0D12'
       })
 
-      const blob = await (await fetch(canvas.toDataURL('image/png'))).blob()
+      const blob = await (await fetch(dataUrl)).blob()
       const file = new File([blob], `รายงานหวย-${drawDate}.png`, { type: 'image/png' })
 
       if (navigator.share && navigator.canShare({ files: [file] })) {
@@ -94,7 +68,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
         // Fallback to download link
         const link = document.createElement('a')
         link.download = `รายงานหวย-${drawDate}.png`
-        link.href = canvas.toDataURL('image/png')
+        link.href = dataUrl
         link.click()
       }
     } catch (error) {
