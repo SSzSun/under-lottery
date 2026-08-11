@@ -49,15 +49,27 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
     if (!reportRef.current) return
 
     try {
+      // Store original styles
+      const originalWidth = reportRef.current.style.width
+      const originalMinWidth = reportRef.current.style.minWidth
+
+      // Force desktop width temporarily
+      reportRef.current.style.width = '1200px'
+      reportRef.current.style.minWidth = '1200px'
+
+      // Wait for layout
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       const dataUrl = await toPng(reportRef.current, {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#0A0D12',
-        width: 1200,
-        style: {
-          minWidth: '1200px'
-        }
+        canvasWidth: 1200
       })
+
+      // Restore original styles
+      reportRef.current.style.width = originalWidth
+      reportRef.current.style.minWidth = originalMinWidth
 
       const blob = await (await fetch(dataUrl)).blob()
       const file = new File([blob], `รายงานหวย-${drawDate}.png`, { type: 'image/png' })
