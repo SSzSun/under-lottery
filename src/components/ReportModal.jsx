@@ -54,8 +54,8 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
       const originalMinWidth = reportRef.current.style.minWidth
 
       // Force desktop width temporarily
-      reportRef.current.style.width = '1400px'
-      reportRef.current.style.minWidth = '1400px'
+      reportRef.current.style.width = '1200px'
+      reportRef.current.style.minWidth = '1200px'
 
       // Wait for layout
       await new Promise(resolve => setTimeout(resolve, 100))
@@ -64,7 +64,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#0A0D12',
-        canvasWidth: 1400
+        canvasWidth: 1200
       })
 
       // Restore original styles
@@ -147,7 +147,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
                                 <span className="font-mono font-semibold text-[#F8FAFC]">{entry.number}</span>
                                 <div className="flex items-center gap-1.5 flex-1 justify-end">
                                   {entry.tags.length > 0 && (
-                                    <span className="text-xs text-[#60A5FA] opacity-75">
+                                    <span className="text-xs text-[#60A5FA] opacity-75 whitespace-nowrap">
                                       [{entry.tags.join(' ')}]
                                     </span>
                                   )}
@@ -171,7 +171,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
                                 <span className="font-mono font-semibold text-[#F8FAFC]">{entry.number}</span>
                                 <div className="flex items-center gap-1.5 flex-1 justify-end">
                                   {entry.tags.length > 0 && (
-                                    <span className="text-xs text-[#FB923C] opacity-75">
+                                    <span className="text-xs text-[#FB923C] opacity-75 whitespace-nowrap">
                                       [{entry.tags.join(' ')}]
                                     </span>
                                   )}
@@ -195,7 +195,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
 
             <div className="bg-[#0F131C] rounded-lg p-4 border border-[#1E293B] text-center">
               <div className="flex items-center justify-center gap-8">
-                <div>
+                <div className="whitespace-nowrap">
                   <span className="text-[#94A3B8] text-sm">ยอดรวมทั้งหมด:</span>
                   <span className="font-bold text-xl text-[#38BDF8] ml-2">
                     ฿{entries.reduce((sum, e) => {
@@ -205,7 +205,7 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
                   </span>
                 </div>
                 <div className="w-px h-6 bg-[#1E293B]"></div>
-                <div>
+                <div className="whitespace-nowrap">
                   <span className="text-[#94A3B8] text-sm">ลูกค้าทั้งหมด:</span>
                   <span className="font-bold text-xl text-[#F8FAFC] ml-2">{groupedData.length} คน</span>
                 </div>
