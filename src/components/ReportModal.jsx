@@ -52,7 +52,11 @@ export default function ReportModal({ buyers, entries, drawDate, onClose }) {
       const dataUrl = await toPng(reportRef.current, {
         quality: 1,
         pixelRatio: 2,
-        backgroundColor: '#0A0D12'
+        backgroundColor: '#0A0D12',
+        width: 1200,
+        style: {
+          minWidth: '1200px'
+        }
       })
 
       const blob = await (await fetch(dataUrl)).blob()
